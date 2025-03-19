@@ -1,4 +1,4 @@
-// app/admin/page.tsx
+// src/app/admin/page.tsx
 import { promises as fs } from "fs";
 import path from "path";
 import { Artwork } from "@/lib/data";
@@ -7,19 +7,12 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminArtworksGrid } from "@/components/AdminArtworksGrid";
 
-export default async function AdminPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<any>; // Указываем как Promise<any>
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function AdminPage() {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
   let artworks: Artwork[] = [];
 
   try {
     const data = await fs.readFile(artworksFile, "utf-8");
-    console.log("Contents of artworks.json:", data);
     artworks = JSON.parse(data);
   } catch (error) {
     console.error("Error reading artworks.json:", error);
