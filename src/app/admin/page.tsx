@@ -7,10 +7,12 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminArtworksGrid } from "@/components/AdminArtworksGrid";
 
-// Используем совместимый тип для параметров страницы
+// Полный тип PageProps
 export default async function AdminPage({
+  params,
   searchParams,
 }: {
+  params: { [key: string]: string | string[] | undefined };
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
@@ -18,6 +20,7 @@ export default async function AdminPage({
 
   try {
     const data = await fs.readFile(artworksFile, "utf-8");
+    console.log("Contents of artworks.json:", data);
     artworks = JSON.parse(data);
   } catch (error) {
     console.error("Error reading artworks.json:", error);
