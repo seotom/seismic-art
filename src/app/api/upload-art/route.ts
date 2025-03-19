@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import { Artwork } from "@/lib/data";
 
 const artworksFile = path.join(process.cwd(), "data", "artworks.json");
 
-async function getArtworks() {
+async function getArtworks(): Promise<Artwork[]> {
   try {
     const data = await fs.readFile(artworksFile, "utf-8");
     return JSON.parse(data);
@@ -13,7 +14,7 @@ async function getArtworks() {
   }
 }
 
-async function saveArtworks(artworks: any[]) {
+async function saveArtworks(artworks: Artwork[]) {
   await fs.writeFile(artworksFile, JSON.stringify(artworks, null, 2), "utf-8");
 }
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Обновляем JSON
     const artworks = await getArtworks();
-    const newArtwork = {
+    const newArtwork: Artwork = {
       id: artworks.length + 1,
       image: `/uploads/${fileName}`,
       title,
