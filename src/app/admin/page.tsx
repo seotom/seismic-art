@@ -1,5 +1,4 @@
 // app/admin/page.tsx
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { promises as fs } from "fs";
 import path from "path";
 import { Artwork } from "@/lib/data";
@@ -12,7 +11,7 @@ export default async function AdminPage({
   params,
   searchParams,
 }: {
-  params: any; // Отключаем строгую типизацию
+  params: Promise<any>; // Указываем как Promise<any>
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
