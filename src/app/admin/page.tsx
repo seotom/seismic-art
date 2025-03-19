@@ -7,12 +7,11 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminArtworksGrid } from "@/components/AdminArtworksGrid";
 
-// Полный тип PageProps
 export default async function AdminPage({
   params,
   searchParams,
 }: {
-  params: { [key: string]: string | string[] | undefined };
+  params: {}; // Пустой объект, так как нет динамических параметров
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
