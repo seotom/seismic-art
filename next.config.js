@@ -1,10 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // output: 'export',
-  // devIndicators: false,
-  distDir: process.env.NODE_ENV === "production" ? "build" : ".next",
+  distDir: ".next", // Фиксируем .next для всех сред
   images: {
-    unoptimized: true,
     domains: [
       "source.unsplash.com",
       "images.unsplash.com",
