@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -21,7 +22,14 @@ interface AdminArtworksGridProps {
 }
 
 export function AdminArtworksGrid({ initialArtworks }: AdminArtworksGridProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    router.push(`/admin?search=${encodeURIComponent(value)}`);
+  };
+
   const [artworks, setArtworks] = useState<Artwork[]>(initialArtworks);
   const [isPending, startTransition] = useTransition(); // Для индикации загрузки
 
@@ -60,7 +68,7 @@ export function AdminArtworksGrid({ initialArtworks }: AdminArtworksGridProps) {
   return (
     <>
       <div className="max-w-md mx-auto mb-12">
-        <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+        <SearchBar searchTerm={searchTerm} onSearchChange={handleSearchChange} />
       </div>
 
       {filteredArtworks.length === 0 ? (

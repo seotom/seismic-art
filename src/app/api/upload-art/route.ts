@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 import { Artwork } from "@/lib/data";
 
-const artworksFile = path.join(process.cwd(), "data", "artworks.json");
-
-async function getArtworks(): Promise<Artwork[]> {
-  try {
-    const data = await fs.readFile(artworksFile, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    return [];
-  }
-}
-
-async function saveArtworks(artworks: Artwork[]) {
-  await fs.writeFile(artworksFile, JSON.stringify(artworks, null, 2), "utf-8");
-}
+// Инициализация Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,26 +20,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
     }
 
-    // Сохраняем файл в public/uploads
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
+    // Загружаем изображение в Supabase Storage
     const fileName = `${Date.now()}-${file.name}`;
-    const filePath = path.join(uploadDir, fileName);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await fs.writeFile(filePath, buffer);
+    const { error: uploadError } = await supabase.storage
+      .from("artworks")
+      .upload(fileName, file);
 
-    // Обновляем JSON
-    const artworks = await getArtworks();
-    const newArtwork: Artwork = {
-      id: artworks.length + 1,
-      image: `/uploads/${fileName}`,
-      title,
-      description,
-      username,
-      isApproved: false, // Для премодерации
-    };
-    artworks.push(newArtwork);
-    await saveArtworks(artworks);
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      throw uploadError;
+    }
+
+    // Получаем публичный URL изображения
+    const { data: publicUrlData } = supabase.storage
+      .from("artworks")
+      .getPublicUrl(fileName);
+
+    // Сохраняем метаданные в таблицу artworks
+    const { data: artworkData, error: insertError } = await supabase
+      .from("artworks")
+      .insert({
+        image_url: publicUrlData.publicUrl,
+        title,
+        description,
+        username,
+        is_approved: false,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      throw insertError;
+    }
+
+    const newArtwork: Artwork = artworkData;
 
     return NextResponse.json({ message: "Artwork uploaded successfully", artwork: newArtwork });
   } catch (error) {

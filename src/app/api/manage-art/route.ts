@@ -1,43 +1,25 @@
-// app/api/manage-art/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 import { Artwork } from "@/lib/data";
 
-const artworksFile = path.join(process.cwd(), "data", "artworks.json");
-
-async function getArtworks(): Promise<Artwork[]> {
-  try {
-    try {
-      await fs.access(artworksFile);
-    } catch {
-      console.log("artworks.json not found, creating at:", artworksFile);
-      await fs.mkdir(path.dirname(artworksFile), { recursive: true });
-      await fs.writeFile(artworksFile, "[]", "utf-8");
-    }
-    const data = await fs.readFile(artworksFile, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading artworks.json:", error);
-    return [];
-  }
-}
-
-async function saveArtworks(artworks: Artwork[]) {
-  try {
-    await fs.writeFile(artworksFile, JSON.stringify(artworks, null, 2), "utf-8");
-    return true;
-  } catch (error) {
-    console.error("Error writing to artworks.json:", error);
-    throw error;
-  }
-}
+// Инициализация Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 export async function GET() {
   try {
-    const artworks = await getArtworks();
-    return NextResponse.json(artworks);
+    const { data: artworks, error } = await supabase
+      .from("artworks")
+      .select("*")
+      .order("id", { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json(artworks || []);
   } catch (error) {
+    console.error("Error fetching artworks:", error);
     return NextResponse.json({ error: "Failed to fetch artworks" }, { status: 500 });
   }
 }
@@ -45,13 +27,21 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const { id } = await request.json();
-    const artworks = await getArtworks();
-    const updatedArtworks = artworks.map((artwork) =>
-      artwork.id === id ? { ...artwork, isApproved: true } : artwork
-    );
-    await saveArtworks(updatedArtworks);
+    const { error } = await supabase
+      .from("artworks")
+      .update({ is_approved: true })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    const { data: updatedArtworks } = await supabase
+      .from("artworks")
+      .select("*")
+      .order("id", { ascending: false });
+
     return NextResponse.json({ message: "Artwork approved", updatedArtworks });
   } catch (error) {
+    console.error("Error approving artwork:", error);
     return NextResponse.json({ error: "Failed to approve artwork" }, { status: 500 });
   }
 }
@@ -59,11 +49,34 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { id } = await request.json();
-    const artworks = await getArtworks();
-    const filteredArtworks = artworks.filter((artwork) => artwork.id !== id);
-    await saveArtworks(filteredArtworks);
-    return NextResponse.json({ message: "Artwork deleted", filteredArtworks });
+
+    // Опционально: удаляем изображение из Storage
+    const { data: artwork } = await supabase
+      .from("artworks")
+      .select("image_url")
+      .eq("id", id)
+      .single();
+
+    if (artwork) {
+      const fileName = artwork.image_url.split("/").pop();
+      await supabase.storage.from("artworks").remove([fileName!]);
+    }
+
+    const { error } = await supabase
+      .from("artworks")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    const { data: updatedArtworks } = await supabase
+      .from("artworks")
+      .select("*")
+      .order("id", { ascending: false });
+
+    return NextResponse.json({ message: "Artwork deleted", updatedArtworks });
   } catch (error) {
+    console.error("Error deleting artwork:", error);
     return NextResponse.json({ error: "Failed to delete artwork" }, { status: 500 });
   }
 }

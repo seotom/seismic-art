@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArtworkCard } from "@/components/ArtworkCard";
 import { SearchBar } from "@/components/SearchBar";
 import { Artwork } from "@/lib/data";
@@ -11,7 +12,13 @@ interface ArtworksGridProps {
 }
 
 export function ArtworksGrid({ initialArtworks }: ArtworksGridProps) {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    router.push(`/admin?search=${encodeURIComponent(value)}`);
+  };
 
   const filteredArtworks = initialArtworks.filter(
     (artwork) =>
@@ -22,7 +29,7 @@ export function ArtworksGrid({ initialArtworks }: ArtworksGridProps) {
   return (
     <>
       <div className="max-w-md mx-auto mb-12">
-        <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+        <SearchBar searchTerm={searchTerm} onSearchChange={handleSearchChange} />
       </div>
 
       {filteredArtworks.length === 0 ? (
