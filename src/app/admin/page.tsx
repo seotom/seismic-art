@@ -7,13 +7,17 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminArtworksGrid } from "@/components/AdminArtworksGrid";
 
-export default async function AdminPage({ searchParams }: { searchParams: { search?: string } }) {
+// Используем совместимый тип для параметров страницы
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
   let artworks: Artwork[] = [];
 
   try {
     const data = await fs.readFile(artworksFile, "utf-8");
-    console.log("Contents of artworks.json:", data);
     artworks = JSON.parse(data);
   } catch (error) {
     console.error("Error reading artworks.json:", error);
@@ -45,9 +49,7 @@ export default async function AdminPage({ searchParams }: { searchParams: { sear
 
       {/* Основной контент */}
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Admin Review Panel
-        </h1>
+        <h1 className="text-3xl font-bold mb-8 text-center">Admin Review Panel</h1>
         <AdminArtworksGrid initialArtworks={artworks} />
       </div>
 
