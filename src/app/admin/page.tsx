@@ -11,7 +11,7 @@ export default async function AdminPage({
   params,
   searchParams,
 }: {
-  params: {}; // Пустой объект, так как нет динамических параметров
+  params: Record<string, string | string[] | undefined>; // Полный тип для params
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const artworksFile = path.join(process.cwd(), "data", "artworks.json");
