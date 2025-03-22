@@ -2,24 +2,55 @@ import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AdminArtworksGrid } from "@/components/AdminArtworksGrid";
-import { SearchBar } from "@/components/SearchBar";
+import { AdminSearch } from "@/components/AdminSearch";
 import { createClient } from "@supabase/supabase-js";
 import { Artwork } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { handleLogout } from "./actions";
+import ClientLogoutForm from "./ClientLogoutForm";
 
-// Инициализация Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_ANON_KEY!
-);
+export const revalidate = 0;
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: { search?: string };
+  searchParams: Promise<{ search?: string }>;
 }) {
-  const searchTerm = searchParams.search || "";
+  const headersList = await headers();
+  const sessionData = headersList.get("x-supabase-session");
 
-  // Получаем арты с учётом поиска
+  console.log("Session data in page.tsx:", sessionData);
+
+  if (!sessionData) {
+    console.log("No session data, redirecting to /admin/login");
+    redirect("/admin/login");
+  }
+
+  const session = JSON.parse(sessionData);
+  if (!session) {
+    console.log("Session parsing failed, redirecting to /admin/login");
+    redirect("/admin/login");
+  }
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      },
+    }
+  );
+
+  const { data: user, error: userError } = await supabase.auth.getUser();
+  console.log("Current user in page.tsx:", user, "Error:", userError);
+
+  const resolvedSearchParams = await searchParams;
+  const searchTerm = resolvedSearchParams.search || "";
+
   let query = supabase
     .from("artworks")
     .select("*")
@@ -36,6 +67,19 @@ export default async function AdminPage({
   if (error) {
     console.error("Error fetching artworks:", error);
   }
+
+  console.log("Initial artworks:", artworks);
+
+  const mappedArtworks = (artworks || []).map((artwork) => ({
+    id: artwork.id,
+    title: artwork.title,
+    description: artwork.description,
+    image: artwork.image_url,
+    username: artwork.username,
+    isApproved: artwork.is_approved,
+  }));
+
+  console.log("Mapped initial artworks:", mappedArtworks);
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-900">
@@ -54,20 +98,16 @@ export default async function AdminPage({
             <span className="text-xl font-semibold">Seismic Art Area</span>
           </Link>
           <div className="flex items-center gap-4">
+            <ClientLogoutForm />
             <ThemeToggle />
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-8 text-center">Admin Review Panel</h1>
-        <SearchBar
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            // Это клиентский компонент, но для серверной фильтрации используем searchParams
-          }}
-        />
-        <AdminArtworksGrid initialArtworks={(artworks || []) as Artwork[]} />
+        <h1 className="text-3xl font-bold mb-8 text-center">Admin Review Control Panel</h1>
+        <AdminSearch initialSearchTerm={searchTerm} />
+        <AdminArtworksGrid initialArtworks={mappedArtworks} />
       </div>
 
       <footer className="py-8 mt-12 border-t border-zinc-200 dark:border-zinc-800">

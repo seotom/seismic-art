@@ -11,7 +11,8 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "ext.same-assets.com",
+        hostname: "vlinohzazsdhrdsqzlsj.supabase.co",
+        pathname: "/storage/v1/object/public/artworks/**", // Разрешаем все пути в бакете artworks
       },
     ],
   },

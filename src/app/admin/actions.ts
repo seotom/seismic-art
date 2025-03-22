@@ -1,59 +1,86 @@
-// app/admin/actions.ts
 "use server";
 
-import { promises as fs } from "fs";
-import path from "path";
+import { createClient } from "@supabase/supabase-js";
 import { Artwork } from "@/lib/data";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-const artworksFile = path.join(process.cwd(), "data", "artworks.json");
-const uploadsDir = path.join(process.cwd(), "public", "uploads");
-
-async function getArtworks(): Promise<Artwork[]> {
-  try {
-    const data = await fs.readFile(artworksFile, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading artworks.json:", error);
-    return [];
-  }
-}
-
-async function saveArtworks(artworks: Artwork[]) {
-  try {
-    await fs.writeFile(artworksFile, JSON.stringify(artworks, null, 2), "utf-8");
-    return true;
-  } catch (error) {
-    console.error("Error writing to artworks.json:", error);
-    throw error;
-  }
-}
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
 
 export async function approveArtwork(id: number): Promise<Artwork[]> {
-  const artworks = await getArtworks();
-  const updatedArtworks = artworks.map((artwork) =>
-    artwork.id === id ? { ...artwork, isApproved: true } : artwork
-  );
-  await saveArtworks(updatedArtworks);
-  return updatedArtworks;
+  await supabase
+    .from("artworks")
+    .update({ is_approved: true })
+    .eq("id", id);
+
+  const { data: artworks, error } = await supabase
+    .from("artworks")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("Error approving artwork:", error);
+    throw error;
+  }
+
+  return (artworks || []).map((artwork) => ({
+    id: artwork.id,
+    title: artwork.title,
+    description: artwork.description,
+    image: artwork.image_url,
+    username: artwork.username,
+    isApproved: artwork.is_approved,
+  }));
 }
 
 export async function deleteArtwork(id: number): Promise<Artwork[]> {
-  const artworks = await getArtworks();
-  const artworkToDelete = artworks.find((artwork) => artwork.id === id);
-  
-  if (artworkToDelete) {
-    // Удаляем файл изображения
-    const imagePath = path.join(uploadsDir, path.basename(artworkToDelete.image));
-    try {
-      await fs.unlink(imagePath);
-      console.log(`Deleted image file: ${imagePath}`);
-    } catch (error) {
-      console.error(`Error deleting image file ${imagePath}:`, error);
-      // Не прерываем выполнение, если файл не удалось удалить
-    }
+  const { data: artwork } = await supabase
+    .from("artworks")
+    .select("image_url")
+    .eq("id", id)
+    .single();
+
+  if (artwork) {
+    const fileName = artwork.image_url.split("/").pop();
+    await supabase.storage.from("artworks").remove([fileName!]);
   }
 
-  const filteredArtworks = artworks.filter((artwork) => artwork.id !== id);
-  await saveArtworks(filteredArtworks);
-  return filteredArtworks;
+  await supabase.from("artworks").delete().eq("id", id);
+
+  const { data: artworks, error } = await supabase
+    .from("artworks")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    console.error("Error deleting artwork:", error);
+    throw error;
+  }
+
+  return (artworks || []).map((artwork) => ({
+    id: artwork.id,
+    title: artwork.title,
+    description: artwork.description,
+    image: artwork.image_url,
+    username: artwork.username,
+    isApproved: artwork.is_approved,
+  }));
+}
+
+export async function handleLogout() {
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!
+  );
+
+  await supabase.auth.signOut();
+
+  const cookieStore = cookies();
+  cookieStore.set("sb-access-token", "", { path: "/", expires: new Date(0) });
+  cookieStore.set("sb-refresh-token", "", { path: "/", expires: new Date(0) });
+
+  redirect("/admin/login");
 }

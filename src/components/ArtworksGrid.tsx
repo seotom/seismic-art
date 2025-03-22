@@ -17,7 +17,7 @@ export function ArtworksGrid({ initialArtworks }: ArtworksGridProps) {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    router.push(`/admin?search=${encodeURIComponent(value)}`);
+    router.push(`/?search=${encodeURIComponent(value)}`);
   };
 
   const filteredArtworks = initialArtworks.filter(
